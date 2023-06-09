@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'models/contact_model.dart';
 import 'widgets/contact_form.dart';
 import 'widgets/contact_list.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   runApp(const MyApp());
@@ -26,6 +27,7 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  late SharedPreferences prefs;
   late TextEditingController _filterController;
   List<ContactModel> _contacts = [];
 
@@ -33,6 +35,19 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     super.initState();
     _filterController = TextEditingController();
+    sharedData();
+  }
+
+  void sharedData() async {
+    prefs = await SharedPreferences.getInstance();
+    final String? rawContacts = prefs.getString('contacts');
+
+    if (rawContacts != null) {
+      final List<ContactModel> localContacts = ContactModel.decode(rawContacts);
+      setState(() {
+        _contacts = localContacts;
+      });
+    }
   }
 
   @override
@@ -41,16 +56,23 @@ class _MyHomePageState extends State<MyHomePage> {
     super.dispose();
   }
 
-  void addContact(ContactModel contact) {
+  void addContact(ContactModel contact) async {
     setState(() {
       _contacts.add(contact);
     });
+    updateStorageData();
   }
 
   void deleteContact(String id) {
     setState(() {
       _contacts = _contacts.where((contact) => contact.id != id).toList();
     });
+    updateStorageData();
+  }
+
+  void updateStorageData() async {
+    final String encodedData = ContactModel.encode(_contacts);
+    await prefs.setString('contacts', encodedData);
   }
 
   List<ContactModel> getContacts() {
